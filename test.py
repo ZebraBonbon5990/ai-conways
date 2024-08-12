@@ -1,11 +1,16 @@
 import pygame as pg
+from matplotlib import pyplot as plt
+import time
+import sys
 
-living_cells = [[0,0], [1,0], [2,0]] #list containing coordinates of living cells and the number of alive neighbours in form of [x, y, alive]
+living_cells = [[0,0], [1,0], [2,0], [1,1], [1,2], [2,-1], [3,-1], [4, 0], [5,0], [5,1], [5,2], [4, 3], [3, 2], [2,2]] #list containing coordinates of living cells in the form [x, y]
 
-must_check = [] #list containing all dead cells that have at least one living neighbor
+must_check = [] #list containing all cells which must be updated
 living_neighbors = []
 birth_queue = []
 death_queue = []
+
+fig = plt.figure()
 
 def must():
     for cell in living_cells:
@@ -60,7 +65,7 @@ def count():
 
 def update():
     for i in range(len(living_neighbors)):
-       # print(must_check[living_neighbors.index(neighbor)], neighbor)
+        #print(must_check[living_neighbors.index(neighbor)], neighbor)
         if living_neighbors[i] == 3 and (must_check[i] not in living_cells):
             #print(must_check[i])
             birth_queue.append(must_check[i])
@@ -80,6 +85,13 @@ def update():
     birth_queue.clear()
     death_queue.clear()
 
+
+async def timer(plot):
+    time.sleep(1)
+    plot.close()
+
+
+
 must()
 count()
 print(living_cells)
@@ -91,5 +103,11 @@ for i in range(10):
     must()
     count()
     print(living_cells)
+    plot = plt.scatter(*zip(*living_cells))
+    plt.show(block=False)
+    plt.pause(1)
+    plt.close()
     #print(must_check)
     #print(living_neighbors)
+
+plt.show()
