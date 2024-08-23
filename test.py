@@ -84,12 +84,6 @@ def update():
     death_queue.clear()
 
 
-async def timer(plot):
-    time.sleep(1)
-    plot.close()
-
-
-
 must()
 count()
 print(living_cells)
