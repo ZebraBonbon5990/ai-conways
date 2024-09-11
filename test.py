@@ -75,6 +75,8 @@ def update():
     for cell in death_queue:
         living_cells.remove(cell)
     
+    print(len(birth_queue))
+
     must_check.clear()
     living_neighbors.clear()
     birth_queue.clear()
