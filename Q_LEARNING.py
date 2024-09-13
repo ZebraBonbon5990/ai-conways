@@ -1,10 +1,11 @@
 import numpy as np
+from matplotlib import pyplot as plt
 
-DEATH_FACTOR = 0
+DEATH_FACTOR = 0.5
 BIRTH_FACTOR = 1
 
-EPISODES = 1
-MAX_STEPS = 2
+EPISODES = 15
+MAX_STEPS = 100
 
 FIELD_WIDTH = 100
 FIELD_HEIGHT = 100
@@ -17,14 +18,20 @@ GAMMA = 1 #The wheigt of future rewards
 
 Q_ARRAY = np.zeros((STATES, ACTIONS))
 
+START_FIELD = [[25,25], [26,25], [27,25]]
+
+fig = plt.figure()
+
 #Q[state, action] = Q[state, action] + LEARNING_RATE * (reward + GAMMA * np.max(Q[new_state, :]) - Q[state, action])
 
-living_cells = [[25,25], [26,25], [27,25]] #list containing coordinates of living cells and the number of alive neighbours in form of [x, y, alive]
+living_cells = START_FIELD #list containing coordinates of living cells and the number of alive neighbours in form of [x, y, alive]
 
 must_check = [] #list containing all dead cells that have at least one living neighbor
 living_neighbors = []
 birth_queue = []
 death_queue = []
+
+REWARD_PLOT = []
 
 
 def must():
@@ -80,8 +87,9 @@ def count():
 
 def update():
     global reward, next_state
+    #print(living_cells)
     for i in range(len(living_neighbors)):
-       # print(must_check[living_neighbors.index(neighbor)], neighbor)
+        #print(must_check[living_neighbors.index(neighbor)], neighbor)
         if living_neighbors[i] == 3 and (must_check[i] not in living_cells) and (ACTIONS-1) > must_check[i][0] >= 0 and (STATES-1) > must_check[i][1] >= 0:
             #print(must_check[i])
             birth_queue.append(must_check[i])
@@ -97,7 +105,7 @@ def update():
         living_cells.remove(cell)
     
     reward = BIRTH_FACTOR*len(birth_queue) - DEATH_FACTOR*len(death_queue)
-    print(birth_queue)
+    #print(birth_queue)
     next_state = len(living_cells)
 
     must_check.clear()
@@ -108,31 +116,35 @@ def update():
 
 must()
 count()
-print(living_neighbors)
+#print(living_neighbors)
 
 for i in range(EPISODES):
-    
-    living_cells.clear()
-
     for _ in range(MAX_STEPS):
-        state = len(living_cells) -1
+        state = len(living_cells) - 1
 
-        if np.random.uniform(0, 1) > EPSILLON:
+        if np.random.uniform(0, 1) < EPSILLON:
             action = np.random.randint(0, ACTIONS, dtype=np.int64)
         else:
             action = np.argmax(Q_ARRAY[state, :])
 
         update()
-        print(living_cells)
+        #print(living_cells)
 
-        if [action, state] in living_cells:
-            living_cells.remove([action.item() // STATES, action.item() % STATES])
+        if [action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT] in living_cells:
+            living_cells.remove([action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT])
         else:
-            living_cells.append([action.item() // STATES, action.item() % STATES])
+            living_cells.append([action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT])
 
         
         must()
         count()
+        REWARD_PLOT.append(reward)
         
         Q_ARRAY[state, action] = Q_ARRAY[state, action] + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state, :]) - Q_ARRAY[state, action])
 
+    print(i)
+    living_cells = START_FIELD
+    EPSILLON -= 0.9/EPISODES
+
+plot = plt.scatter(range(len(REWARD_PLOT)), REWARD_PLOT)
+plt.show()
