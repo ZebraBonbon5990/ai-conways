@@ -1,7 +1,7 @@
 import pygame as pg
 from matplotlib import pyplot as plt
 
-living_cells = [[0,0], [1,0], [2,0], [1,1], [1,2], [2,-1], [3,-1], [4, 0], [5,0], [5,1], [5,2], [4, 3], [3, 2], [2,2]] #list containing coordinates of living cells in the form [x, y]
+living_cells = [[0,0], [1,0], [2,0]] #list containing coordinates of living cells in the form [x, y]
 
 must_check = [] #list containing all cells which must be updated
 living_neighbors = []
@@ -10,55 +10,23 @@ death_queue = []
 
 fig = plt.figure()
 
+iterabl = [-1, 0, 1]
+
 def must():
     for cell in living_cells:
-        must_check.append(cell)
-        living_neighbors.append(0)
-
-        if [cell[0]+1, cell[1]] not in living_cells and [cell[0]+1, cell[1]] not in must_check:
-            must_check.append([cell[0]+1, cell[1]])
-            living_neighbors.append(0)
-        if [cell[0], cell[1]+1] not in living_cells and [cell[0], cell[1]+1] not in must_check:
-            must_check.append([cell[0], cell[1]+1])
-            living_neighbors.append(0)
-        if [cell[0]+1, cell[1]+1] not in living_cells and [cell[0]+1, cell[1]+1] not in must_check:
-            must_check.append([cell[0]+1, cell[1]+1])
-            living_neighbors.append(0)
-        if [cell[0]-1, cell[1]] not in living_cells and [cell[0]-1, cell[1]] not in must_check:
-            must_check.append([cell[0]-1, cell[1]])
-            living_neighbors.append(0)
-        if [cell[0], cell[1]-1] not in living_cells and [cell[0], cell[1]-1] not in must_check:
-            must_check.append([cell[0], cell[1]-1])
-            living_neighbors.append(0)
-        if [cell[0]-1, cell[1]-1] not in living_cells and [cell[0]-1, cell[1]-1] not in must_check:
-            must_check.append([cell[0]-1, cell[1]-1])
-            living_neighbors.append(0)
-        if [cell[0]-1, cell[1]+1] not in living_cells and [cell[0]-1, cell[1]+1] not in must_check:
-            must_check.append([cell[0]-1, cell[1]+1])
-            living_neighbors.append(0)
-        if [cell[0]+1, cell[1]-1] not in living_cells and [cell[0]+1, cell[1]-1] not in must_check:
-            must_check.append([cell[0]+1, cell[1]-1])
-            living_neighbors.append(0)
+        for x in iterabl:
+            for y in iterabl:
+                if  [cell[0]+x, cell[1]+y] not in must_check:
+                    must_check.append([cell[0]+x, cell[1]+y])
+                    living_neighbors.append(0)
 
 
 def count():
     for cell in must_check:
-        if [cell[0]+1, cell[1]] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0], cell[1]+1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]+1, cell[1]+1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]-1, cell[1]] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0], cell[1]-1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]-1, cell[1]-1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]-1, cell[1]+1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]+1, cell[1]-1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
+        for x in iterabl:
+            for y in iterabl:
+                if [cell[0]+x, cell[1]+y] in living_cells and (x != 0 or y != 0):
+                    living_neighbors[must_check.index(cell)] += 1
         
 
 def update():

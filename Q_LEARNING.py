@@ -33,65 +33,28 @@ death_queue = []
 
 REWARD_PLOT = []
 
+iterabl = [-1, 0, 1]
 
 def must():
     for cell in living_cells:
-        must_check.append(cell)
-        living_neighbors.append(0)
-
-        if [cell[0]+1, cell[1]] not in living_cells and [cell[0]+1, cell[1]] not in must_check:
-            must_check.append([cell[0]+1, cell[1]])
-            living_neighbors.append(0)
-        if [cell[0], cell[1]+1] not in living_cells and [cell[0], cell[1]+1] not in must_check:
-            must_check.append([cell[0], cell[1]+1])
-            living_neighbors.append(0)
-        if [cell[0]+1, cell[1]+1] not in living_cells and [cell[0]+1, cell[1]+1] not in must_check:
-            must_check.append([cell[0]+1, cell[1]+1])
-            living_neighbors.append(0)
-        if [cell[0]-1, cell[1]] not in living_cells and [cell[0]-1, cell[1]] not in must_check:
-            must_check.append([cell[0]-1, cell[1]])
-            living_neighbors.append(0)
-        if [cell[0], cell[1]-1] not in living_cells and [cell[0], cell[1]-1] not in must_check:
-            must_check.append([cell[0], cell[1]-1])
-            living_neighbors.append(0)
-        if [cell[0]-1, cell[1]-1] not in living_cells and [cell[0]-1, cell[1]-1] not in must_check:
-            must_check.append([cell[0]-1, cell[1]-1])
-            living_neighbors.append(0)
-        if [cell[0]-1, cell[1]+1] not in living_cells and [cell[0]-1, cell[1]+1] not in must_check:
-            must_check.append([cell[0]-1, cell[1]+1])
-            living_neighbors.append(0)
-        if [cell[0]+1, cell[1]-1] not in living_cells and [cell[0]+1, cell[1]-1] not in must_check:
-            must_check.append([cell[0]+1, cell[1]-1])
-            living_neighbors.append(0)
-
+        for x in iterabl:
+            for y in iterabl:
+                if  [cell[0]+x, cell[1]+y] not in must_check:
+                    must_check.append([cell[0]+x, cell[1]+y])
+                    living_neighbors.append(0)
 
 def count():
     for cell in must_check:
-        if [cell[0]+1, cell[1]] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0], cell[1]+1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]+1, cell[1]+1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]-1, cell[1]] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0], cell[1]-1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]-1, cell[1]-1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]-1, cell[1]+1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
-        if [cell[0]+1, cell[1]-1] in living_cells:
-            living_neighbors[must_check.index(cell)] += 1
+        for x in iterabl:
+            for y in iterabl:
+                if [cell[0]+x, cell[1]+y] in living_cells and (x != 0 or y != 0):
+                    living_neighbors[must_check.index(cell)] += 1
         
 
 def update():
     global reward, next_state
-    #print(living_cells)
     for i in range(len(living_neighbors)):
-        #print(must_check[living_neighbors.index(neighbor)], neighbor)
         if living_neighbors[i] == 3 and (must_check[i] not in living_cells) and (ACTIONS-1) > must_check[i][0] >= 0 and (STATES-1) > must_check[i][1] >= 0:
-            #print(must_check[i])
             birth_queue.append(must_check[i])
 
     for n in range(len(living_neighbors)):
@@ -105,7 +68,6 @@ def update():
         living_cells.remove(cell)
     
     reward = BIRTH_FACTOR*len(birth_queue) - DEATH_FACTOR*len(death_queue)
-    #print(birth_queue)
     next_state = len(living_cells)
 
     must_check.clear()
