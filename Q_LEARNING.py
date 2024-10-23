@@ -82,6 +82,18 @@ def count_clusters():
     return num_clusters, avg_cluster_size
 
 
+def get_state():        #takes all the components of the games state and returns a tuple containing them.
+    num_living_cells = len(living_cells)
+    total_neighbors = len(living_neighbors)
+    num_clusters, avg_cluster_size = count_clusters()
+    num_rim_cells = count_rim_cells()
+    avg_cell_age = np.mean(cell_ages[cell_ages > 0]) if len(living_cells) == 0 else 0
+
+    state = (num_living_cells, total_neighbors, num_clusters, avg_cluster_size, num_rim_cells, avg_cell_age)
+
+    return state
+
+
 def must():     #determines which cells must be updated
     for cell in living_cells:
         for x in iterabl:
@@ -125,7 +137,6 @@ def update():
 
 must()
 count_living_neighbors()
-#print(living_neighbors)
 
 for i in range(EPISODES):
     for _ in range(MAX_STEPS):
