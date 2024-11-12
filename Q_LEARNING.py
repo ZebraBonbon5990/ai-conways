@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import json
 
 DEATH_FACTOR = 0.5      #factor that determines how much of a negative reward the ai recieves when a cell dies
 BIRTH_FACTOR = 1        #factor that determines how much of a positive reward the ai recieves when a cell is born
@@ -10,13 +11,15 @@ MAX_STEPS = 100     #how many steps/ticks there are per Episode
 FIELD_WIDTH = 100       #The width of the field
 FIELD_HEIGHT = 100      #The height of the field
 
-STATES = ACTIONS = FIELD_WIDTH * FIELD_HEIGHT #The amount of States and Actions there are in the game. (Number of alive cells, hence max the total amount of cells)
+STATES = FIELD_WIDTH * FIELD_HEIGHT #The amount of States and Actions there are in the game. (Number of alive cells, hence max the total amount of cells)
 
-LEARNING_RATE = 1 #multiplies the total reward gained
+ACTIONS = FIELD_HEIGHT
+
+LEARNING_RATE = 0.1 #multiplies the total reward gained
 EPSILLON = 0.9 #Chance for random action to be taken
 GAMMA = 1 #The weight of future rewards
 
-Q_ARRAY = np.zeros((STATES, ACTIONS)) #create the ai
+Q_ARRAY = {} #create the ai
 
 START_FIELD = [[25,25], [26,25], [27,25]] #the coords of the cells alive at the beginning
 
@@ -36,6 +39,8 @@ death_queue = []
 REWARD_PLOT = []
 
 iterabl = [-1, 0, 1]
+
+action = [0, 0]
 
 def update_cell_ages():
     for cell in living_cells:
@@ -108,12 +113,11 @@ def count_living_neighbors():    #counts the living neighbors of the cells which
             for y in iterabl:
                 if [cell[0]+x, cell[1]+y] in living_cells and (x != 0 or y != 0):
                     living_neighbors[must_check.index(cell)] += 1
-        
 
 def update():
     global reward, next_state
     for i in range(len(living_neighbors)):
-        if living_neighbors[i] == 3 and (must_check[i] not in living_cells) and (ACTIONS-1) > must_check[i][0] >= 0 and (STATES-1) > must_check[i][1] >= 0:
+        if living_neighbors[i] == 3 and (must_check[i] not in living_cells) and (FIELD_WIDTH) > must_check[i][0] >= 0 and (FIELD_HEIGHT) > must_check[i][1] >= 0:
             birth_queue.append(must_check[i])
 
     for n in range(len(living_neighbors)):
@@ -127,7 +131,7 @@ def update():
         living_cells.remove(cell)
     
     reward = BIRTH_FACTOR*len(birth_queue) - DEATH_FACTOR*len(death_queue)
-    next_state = len(living_cells)
+    next_state = get_state()
 
     must_check.clear()
     living_neighbors.clear()
@@ -135,36 +139,64 @@ def update():
     death_queue.clear()
 
 
+def action():
+    if np.random.uniform(0, 1) < EPSILLON:
+        action[0] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random x-Coordinate
+        action[1] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random y-Coordinate
+        action[2] = np.random.randint(0, 2, dtype=np.int64) #random if to take another action
+    else:
+        action[0] = np.argmax(Q_ARRAY[state][0])  #determine best x-Coordinate
+        action[1] = np.argmax(Q_ARRAY[state][1])  #determine best y-Coordinate
+        action[2] = np.argmax(Q_ARRAY[state][2])  #determine if to take another action
+
+    if [action[0].item(), action[1].item()] in living_cells:
+        living_cells.remove([action[0].item(), action[1].item()])
+    else:
+        living_cells.append([action[0].item(), action[1].item()])
+    
+    if action[3] == 1:
+        action()
+
+
 must()
 count_living_neighbors()
 
 for i in range(EPISODES):
     for _ in range(MAX_STEPS):
-        state = len(living_cells) - 1
+        state = get_state()
 
-        if np.random.uniform(0, 1) < EPSILLON:
-            action = np.random.randint(0, ACTIONS, dtype=np.int64)
-        else:
-            action = np.argmax(Q_ARRAY[state, :])
+        if state not in Q_ARRAY.keys():
+            Q_ARRAY[state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
+
+        
 
         update()
         #print(living_cells)
 
+        if next_state not in Q_ARRAY.keys():
+            Q_ARRAY[next_state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
+
+        """
         if [action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT] in living_cells:
             living_cells.remove([action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT])
         else:
             living_cells.append([action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT])
-
+        """
         
+        
+
         must()
         count_living_neighbors()
         REWARD_PLOT.append(reward)
         
-        Q_ARRAY[state, action] = Q_ARRAY[state, action] + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state, :]) - Q_ARRAY[state, action])
+        Q_ARRAY[state][0][action[0]] = Q_ARRAY[state][1][action[1]] = Q_ARRAY[state][2][action[2]] = Q_ARRAY[state][0][action[0]] + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state]) - Q_ARRAY[state][0][action[0]])
 
     print(i)
     living_cells = START_FIELD
-    EPSILLON -= 0.9/EPISODES
+    EPSILLON *= 0.999
 
 plot = plt.scatter(range(len(REWARD_PLOT)), REWARD_PLOT)
+dict_with_string_keys = {str(key): [value[0].tolist(), value[1].tolist()] for key, value in Q_ARRAY.items()}
+with open("sample1.json", "w") as outfile: 
+   json.dump(dict_with_string_keys, outfile)
 plt.show()
