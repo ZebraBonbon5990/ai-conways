@@ -5,7 +5,7 @@ import json
 DEATH_FACTOR = 0.5      #factor that determines how much of a negative reward the ai recieves when a cell dies
 BIRTH_FACTOR = 1        #factor that determines how much of a positive reward the ai recieves when a cell is born
 
-EPISODES = 15       #how often the ai plays the game from the beginning on.
+EPISODES = 1500       #how often the ai plays the game from the beginning on.
 MAX_STEPS = 100     #how many steps/ticks there are per Episode
 
 FIELD_WIDTH = 100       #The width of the field
@@ -16,7 +16,7 @@ STATES = FIELD_WIDTH * FIELD_HEIGHT #The amount of States and Actions there are 
 ACTIONS = FIELD_HEIGHT
 
 LEARNING_RATE = 0.1 #multiplies the total reward gained
-EPSILLON = 0.9 #Chance for random action to be taken
+EPSILLON = 1 #Chance for random action to be taken
 GAMMA = 1 #The weight of future rewards
 
 Q_ARRAY = {} #create the ai
@@ -40,7 +40,7 @@ REWARD_PLOT = []
 
 iterabl = [-1, 0, 1]
 
-action = [0, 0]
+action = [0, 0, 0]
 
 def update_cell_ages():
     for cell in living_cells:
@@ -139,7 +139,7 @@ def update():
     death_queue.clear()
 
 
-def action():
+def take_action():
     if np.random.uniform(0, 1) < EPSILLON:
         action[0] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random x-Coordinate
         action[1] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random y-Coordinate
@@ -154,8 +154,8 @@ def action():
     else:
         living_cells.append([action[0].item(), action[1].item()])
     
-    if action[3] == 1:
-        action()
+    if action[2] == 1:
+        take_action()
 
 
 must()
@@ -164,11 +164,10 @@ count_living_neighbors()
 for i in range(EPISODES):
     for _ in range(MAX_STEPS):
         state = get_state()
-
         if state not in Q_ARRAY.keys():
             Q_ARRAY[state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
 
-        
+        take_action()
 
         update()
         #print(living_cells)
@@ -188,12 +187,18 @@ for i in range(EPISODES):
         must()
         count_living_neighbors()
         REWARD_PLOT.append(reward)
+
+        q_value_0 =Q_ARRAY[state][0][action[0]]
+        q_value_1 = Q_ARRAY[state][1][action[1]]
+        q_value_2 = Q_ARRAY[state][2][action[2]]
         
-        Q_ARRAY[state][0][action[0]] = Q_ARRAY[state][1][action[1]] = Q_ARRAY[state][2][action[2]] = Q_ARRAY[state][0][action[0]] + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state]) - Q_ARRAY[state][0][action[0]])
+        Q_ARRAY[state][0][action[0]] = q_value_0 + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state][0]) - q_value_0)
+        Q_ARRAY[state][1][action[1]] = q_value_1 + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state][1]) - q_value_1)
+        Q_ARRAY[state][2][action[2]] = q_value_2 + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state][2]) - q_value_2)
 
     print(i)
     living_cells = START_FIELD
-    EPSILLON *= 0.999
+    EPSILLON *= 0.997
 
 plot = plt.scatter(range(len(REWARD_PLOT)), REWARD_PLOT)
 dict_with_string_keys = {str(key): [value[0].tolist(), value[1].tolist()] for key, value in Q_ARRAY.items()}
