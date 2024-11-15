@@ -1,11 +1,20 @@
 import numpy as np
+import pygame as pg
 from matplotlib import pyplot as plt
 import json
+import time
+
+pg.init()
+display = pg.display.set_mode((1000, 1000))
+
+CELL_WIDTH = 10
+
+print("Starting")
 
 DEATH_FACTOR = 0.5      #factor that determines how much of a negative reward the ai recieves when a cell dies
 BIRTH_FACTOR = 1        #factor that determines how much of a positive reward the ai recieves when a cell is born
 
-EPISODES = 3000       #how often the ai plays the game from the beginning on.
+EPISODES = 150       #how often the ai plays the game from the beginning on.
 MAX_STEPS = 100     #how many steps/ticks there are per Episode
 
 FIELD_WIDTH = 100       #The width of the field
@@ -19,7 +28,6 @@ LEARNING_RATE = 0.1 #multiplies the total reward gained
 EPSILLON = 1 #Chance for random action to be taken
 GAMMA = 1 #The weight of future rewards
 
-Q_ARRAY = {} #create the ai
 
 START_FIELD = [[25,25], [26,25], [27,25]] #the coords of the cells alive at the beginning
 
@@ -35,8 +43,6 @@ must_check = [] #list containing all dead cells that have at least one living ne
 living_neighbors = []
 birth_queue = []
 death_queue = []
-
-REWARD_PLOT = []
 
 iterabl = [-1, 0, 1]
 
@@ -87,6 +93,15 @@ def count_clusters():
     return num_clusters, avg_cluster_size
 
 
+def load_model(model_file): #add model path. Models won't be on git-hub, because they are too large    
+    path = model_file
+    with open(path, "r") as file: 
+        raw_data = json.load(file)
+        Q_ARRAY = {eval(key.replace("(", "").replace(")", "")): [np.array(value[0]), np.array(value[1]), np.array(value[2])] for key, value in raw_data.items()}
+
+    return Q_ARRAY
+
+
 def get_state():        #takes all the components of the games state and returns a tuple containing them.
     num_living_cells = len(living_cells)
     total_neighbors = len(living_neighbors)
@@ -130,7 +145,6 @@ def update():
     for cell in death_queue:
         living_cells.remove(cell)
     
-    reward = BIRTH_FACTOR*len(birth_queue) - DEATH_FACTOR*len(death_queue)
     next_state = get_state()
 
     must_check.clear()
@@ -140,14 +154,16 @@ def update():
 
 
 def take_action():
-    if np.random.uniform(0, 1) < EPSILLON:
+    if state not in ai.keys():
         action[0] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random x-Coordinate
         action[1] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random y-Coordinate
         action[2] = np.random.randint(0, 2, dtype=np.int64) #random if to take another action
     else:
-        action[0] = np.argmax(Q_ARRAY[state][0])  #determine best x-Coordinate
-        action[1] = np.argmax(Q_ARRAY[state][1])  #determine best y-Coordinate
-        action[2] = np.argmax(Q_ARRAY[state][2])  #determine if to take another action
+        #print("Ai action")
+        print(next(iter(ai)))
+        action[0] = np.argmax(ai[state][0])  #determine best x-Coordinate
+        action[1] = np.argmax(ai[state][1])  #determine best y-Coordinate
+        action[2] = np.argmax(ai[state][2])  #determine if to take another action
 
     if [action[0].item(), action[1].item()] in living_cells:
         living_cells.remove([action[0].item(), action[1].item()])
@@ -158,50 +174,29 @@ def take_action():
         take_action()
 
 
+ai = load_model("sample10.json")
+
+living_cells = START_FIELD
+
 must()
 count_living_neighbors()
+for _ in range(MAX_STEPS):
+    state = get_state()
 
-for i in range(EPISODES):
-    for _ in range(MAX_STEPS):
-        state = get_state()
-        if state not in Q_ARRAY.keys():
-            Q_ARRAY[state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
+    display.fill((0, 0, 0))
 
-        take_action()
+    for cell in living_cells:
+        pg.draw.rect(display, (255, 255, 255), (cell[0]*CELL_WIDTH,cell[1]*CELL_WIDTH, CELL_WIDTH, CELL_WIDTH))
 
-        update()
-        #print(living_cells)
+    pg.display.update()
+    time.sleep(0.5)
 
-        if next_state not in Q_ARRAY.keys():
-            Q_ARRAY[next_state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
+    take_action()
 
-        """
-        if [action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT] in living_cells:
-            living_cells.remove([action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT])
-        else:
-            living_cells.append([action.item() // FIELD_WIDTH, action.item() % FIELD_HEIGHT])
-        """
-        
-        
+    update()
 
-        must()
-        count_living_neighbors()
-        REWARD_PLOT.append(reward)
+    must()
+    count_living_neighbors()
 
-        q_value_0 =Q_ARRAY[state][0][action[0]]
-        q_value_1 = Q_ARRAY[state][1][action[1]]
-        q_value_2 = Q_ARRAY[state][2][action[2]]
-        
-        Q_ARRAY[state][0][action[0]] = q_value_0 + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state][0]) - q_value_0)
-        Q_ARRAY[state][1][action[1]] = q_value_1 + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state][1]) - q_value_1)
-        Q_ARRAY[state][2][action[2]] = q_value_2 + LEARNING_RATE * (reward + GAMMA * np.max(Q_ARRAY[next_state][2]) - q_value_2)
-
-    print(i)
-    living_cells = START_FIELD
-    EPSILLON *= 0.9994
-
-plot = plt.scatter(range(len(REWARD_PLOT)), REWARD_PLOT)
-dict_with_string_keys = {str(key): [value[0].tolist(), value[1].tolist(), value[2].tolist()] for key, value in Q_ARRAY.items()}
-with open("sample1.json", "w") as outfile: 
-   json.dump(dict_with_string_keys, outfile)
-plt.show()
+    
+#EPSILLON *= 0.997
