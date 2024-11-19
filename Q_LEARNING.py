@@ -1,11 +1,12 @@
 import numpy as np
 from matplotlib import pyplot as plt
 import json
+import time
 
-DEATH_FACTOR = 0.5      #factor that determines how much of a negative reward the ai recieves when a cell dies
+DEATH_FACTOR = 1      #factor that determines how much of a negative reward the ai recieves when a cell dies
 BIRTH_FACTOR = 1        #factor that determines how much of a positive reward the ai recieves when a cell is born
 
-EPISODES = 3000       #how often the ai plays the game from the beginning on.
+EPISODES = 400       #how often the ai plays the game from the beginning on.
 MAX_STEPS = 100     #how many steps/ticks there are per Episode
 
 FIELD_WIDTH = 100       #The width of the field
@@ -17,11 +18,11 @@ ACTIONS = FIELD_HEIGHT
 
 LEARNING_RATE = 0.1 #multiplies the total reward gained
 EPSILLON = 1 #Chance for random action to be taken
-GAMMA = 1 #The weight of future rewards
+GAMMA = 10 #The weight of future rewards
 
 Q_ARRAY = {} #create the ai
 
-START_FIELD = [[25,25], [26,25], [27,25]] #the coords of the cells alive at the beginning
+START_FIELD = [] #the coords of the cells alive at the beginning
 
 cell_ages = np.zeros((FIELD_WIDTH, FIELD_HEIGHT), dtype=np.int64) #a matrix containing the age of every individual, living cell
 
@@ -92,7 +93,8 @@ def get_state():        #takes all the components of the games state and returns
     total_neighbors = len(living_neighbors)
     num_clusters, avg_cluster_size = count_clusters()
     num_rim_cells = count_rim_cells()
-    avg_cell_age = np.mean(cell_ages[cell_ages > 0]) if len(living_cells) == 0 else 0
+    avg_cell_age = np.mean(cell_ages[cell_ages > 0]) if len(cell_ages[cell_ages > 0]) != 0 else 0
+    #print(np.mean(cell_ages[cell_ages > 0]) if len(cell_ages[cell_ages > 0]) != 0 else 0)
 
     state = (num_living_cells, total_neighbors, num_clusters, avg_cluster_size, num_rim_cells, avg_cell_age)
 
@@ -121,12 +123,14 @@ def update():
             birth_queue.append(must_check[i])
 
     for n in range(len(living_neighbors)):
-        if (living_neighbors[n] > 3 or living_neighbors[n] < 2) and (must_check[n] in living_cells):
+        if (living_neighbors[n] > 3 or living_neighbors[n] < 2) and (must_check[n] in living_cells) and (must_check[n] not in death_queue):
             death_queue.append(must_check[n])
 
     for cell in birth_queue:
         living_cells.append(cell)
 
+    #print("lq", living_cells)
+    #print("dq", death_queue)
     for cell in death_queue:
         living_cells.remove(cell)
     
@@ -139,7 +143,18 @@ def update():
     death_queue.clear()
 
 
+def visualize_game_state():
+    field = np.zeros((FIELD_WIDTH, FIELD_HEIGHT), dtype=np.int8)
+    for x, y in living_cells:
+        field[x, y] = 1
+    plt.imshow(field, cmap='binary')
+    plt.show(block=False)
+    time.sleep(0.5)
+    plt.close()
+
+
 def take_action():
+    global queue_action
     if np.random.uniform(0, 1) < EPSILLON:
         action[0] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random x-Coordinate
         action[1] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random y-Coordinate
@@ -147,15 +162,15 @@ def take_action():
     else:
         action[0] = np.argmax(Q_ARRAY[state][0])  #determine best x-Coordinate
         action[1] = np.argmax(Q_ARRAY[state][1])  #determine best y-Coordinate
-        action[2] = np.argmax(Q_ARRAY[state][2])  #determine if to take another action
+        action[2] = np.argmax(Q_ARRAY[state][2])  #determine if to take another action #! create Function to get the next state (for the ai to decide if to take another action)
 
-    if [action[0].item(), action[1].item()] in living_cells:
-        living_cells.remove([action[0].item(), action[1].item()])
-    else:
-        living_cells.append([action[0].item(), action[1].item()])
+    if [action[0].item(), action[1].item()] in living_cells and [action[0].item(), action[1].item()] not in death_queue:
+        death_queue.append([action[0].item(), action[1].item()])
+    elif [action[0].item(), action[1].item()] not in birth_queue:
+        birth_queue.append([action[0].item(), action[1].item()])
     
     if action[2] == 1:
-        take_action()
+        queue_action = True
 
 
 must()
@@ -163,11 +178,19 @@ count_living_neighbors()
 
 for i in range(EPISODES):
     for _ in range(MAX_STEPS):
-        state = get_state()
-        if state not in Q_ARRAY.keys():
-            Q_ARRAY[state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
+        #visualize_game_state()
+        queue_action=True
 
-        take_action()
+        while queue_action:
+            queue_action = False
+            state = get_state() #! Create function to get the state after the ai took action.
+            if state not in Q_ARRAY.keys():
+                Q_ARRAY[state] = [np.zeros(ACTIONS), np.zeros(ACTIONS), np.zeros(2)]
+            take_action()
+            #print(f"lq{i}", living_cells)
+            #print(f"dq{i}", death_queue)
+
+        
 
         update()
         #print(living_cells)
@@ -188,7 +211,7 @@ for i in range(EPISODES):
         count_living_neighbors()
         REWARD_PLOT.append(reward)
 
-        q_value_0 =Q_ARRAY[state][0][action[0]]
+        q_value_0 = Q_ARRAY[state][0][action[0]]
         q_value_1 = Q_ARRAY[state][1][action[1]]
         q_value_2 = Q_ARRAY[state][2][action[2]]
         
@@ -198,10 +221,10 @@ for i in range(EPISODES):
 
     print(i)
     living_cells = START_FIELD
-    EPSILLON *= 0.9994
+    EPSILLON *= 0.99
 
 plot = plt.scatter(range(len(REWARD_PLOT)), REWARD_PLOT)
 dict_with_string_keys = {str(key): [value[0].tolist(), value[1].tolist(), value[2].tolist()] for key, value in Q_ARRAY.items()}
 with open("sample1.json", "w") as outfile: 
-   json.dump(dict_with_string_keys, outfile)
+    json.dump(dict_with_string_keys, outfile)
 plt.show()
