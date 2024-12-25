@@ -26,10 +26,10 @@ ACTIONS = FIELD_HEIGHT
 
 LEARNING_RATE = 0.1 #multiplies the total reward gained
 EPSILLON = 1 #Chance for random action to be taken
-GAMMA = 1 #The weight of future rewards
+GAMMA = 10 #The weight of future rewards
 
 
-START_FIELD = [[25,25], [26,25], [27,25]] #the coords of the cells alive at the beginning
+START_FIELD = [] #the coords of the cells alive at the beginning
 
 cell_ages = np.zeros((FIELD_WIDTH, FIELD_HEIGHT), dtype=np.int64) #a matrix containing the age of every individual, living cell
 
@@ -107,7 +107,7 @@ def get_state():        #takes all the components of the games state and returns
     total_neighbors = len(living_neighbors)
     num_clusters, avg_cluster_size = count_clusters()
     num_rim_cells = count_rim_cells()
-    avg_cell_age = np.mean(cell_ages[cell_ages > 0]) if len(living_cells) == 0 else 0
+    avg_cell_age = np.mean(cell_ages[cell_ages > 0]) if len(cell_ages[cell_ages > 0]) == 0 else 0
 
     state = (num_living_cells, total_neighbors, num_clusters, avg_cluster_size, num_rim_cells, avg_cell_age)
 
@@ -154,34 +154,41 @@ def update():
 
 
 def take_action():
+    global queue_action
     if state not in ai.keys():
         action[0] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random x-Coordinate
         action[1] = np.random.randint(0, ACTIONS, dtype=np.int64)  #random y-Coordinate
         action[2] = np.random.randint(0, 2, dtype=np.int64) #random if to take another action
     else:
-        #print("Ai action")
-        print(next(iter(ai)))
+        print("Ai action")
+        print(state)
         action[0] = np.argmax(ai[state][0])  #determine best x-Coordinate
         action[1] = np.argmax(ai[state][1])  #determine best y-Coordinate
         action[2] = np.argmax(ai[state][2])  #determine if to take another action
 
     if [action[0].item(), action[1].item()] in living_cells:
-        living_cells.remove([action[0].item(), action[1].item()])
+        death_queue.append([action[0].item(), action[1].item()])
     else:
-        living_cells.append([action[0].item(), action[1].item()])
-    
+        birth_queue.append([action[0].item(), action[1].item()])
+
     if action[2] == 1:
-        take_action()
+        queue_action = True
 
 
-ai = load_model("sample10.json")
+ai = load_model("sample1.json")
 
 living_cells = START_FIELD
 
 must()
 count_living_neighbors()
 for _ in range(MAX_STEPS):
-    state = get_state()
+
+    queue_action=True
+
+    while queue_action:
+            state = get_state()
+            take_action()
+            queue_action = False
 
     display.fill((0, 0, 0))
 
@@ -190,8 +197,6 @@ for _ in range(MAX_STEPS):
 
     pg.display.update()
     time.sleep(0.5)
-
-    take_action()
 
     update()
 
